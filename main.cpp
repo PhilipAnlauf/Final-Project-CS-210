@@ -1,10 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include <utility>
 #include <vector>
-#include <bitset>
-#include <chrono>
 
 using namespace std;
 
@@ -30,27 +27,51 @@ int getHashIndex(string& cityNameIN, int& cityPopIN, int arraySize)
 class CityCacheList
 {
     private:
-        City* cityCache[10] = {nullptr};
+        vector<City*> cities;
     public:
-        void insertCity2Cache(City* newCity)
+        CityCacheList()
         {
-            const int hashIndex = getHashIndex(newCity->name, newCity->population, (sizeof(cityCache) / sizeof(cityCache[0])));
-
-            if (hashIndex == -1) { return; }
-            if(cityCache[hashIndex] == nullptr) { cityCache[hashIndex] = newCity; return;}
-
-            //TODO: implement Collision handling
-            else
+            for (int i = 0; i < 10; i++)
             {
-                 //Need to create new array * 2 size
-                // assign old cities to new list with new has
-                // assign new array as cityCache
+                cities.push_back(nullptr);
             }
-
-            City* temp = cityCache[hashIndex];
-
         }
 
+        void insertCity2Cache(City* cityIN)
+        {
+            cities.erase(cities.begin());
+            cities.push_back(cityIN);
+        }
+
+        City* findCity(string& cityNameIN, string& countryCodeIN)
+        {
+            for (int i = 0; i < 10; i++)
+            {
+                if (cities.at(i) != nullptr)
+                {
+                    if (cities.at(i)->countryCode == countryCodeIN && cities.at(i)->name == cityNameIN)
+                    {
+                        return cities.at(i);
+                    }
+                }
+            }
+            return nullptr;
+        }
+
+        void displayCache()
+        {
+            for (int i = 0; i < 10; i++)
+            {
+                if (cities.at(i) != nullptr)
+                {
+                    cout << cities.at(i)->name << " " << endl;
+                }
+                else
+                {
+                    cout << " nullptr" << endl;
+                }
+            }
+        }
 };
 
 class CSVReader
@@ -78,15 +99,15 @@ class CSVReader
 
                 if (lineData.at(0) == countryCodeIN && lineData.at(1) == cityNameIN)
                 {
-                    cout << "City Found: ";
-                    cacheListIN.insertCity2Cache(new City(lineData.at(0), lineData.at(1), stoi(lineData.at(2))));
+                    cout << "City Found: " << lineData.at(0) << " " << lineData.at(1) << " "<< lineData.at(2) << endl;
+                    cacheListIN.insertCity2Cache(new City(lineData.at(1), lineData.at(0), stoi(lineData.at(2))));
                     return;
                 }
 
             }
+            cout << "City was not found in csv file." << endl;
             file.close();
-            return;
-        }
+       }
 };
 
 int main()
@@ -96,33 +117,48 @@ int main()
     string cityName, countryCode;
     while (true)
     {
-        cout << "1. INVALID CHOICE." << endl;
+        cout << "1. Display cache." << endl;
         cout << "2. Search for city." << endl;
-        cout << "3. INVALID CHOICE." << endl;
-        cout << "4. exit." << endl;
+        cout << "3. exit." << endl;
 
         string choiceHold;
         getline(cin, choiceHold);
-        switch (stoi(choiceHold))
+        City* hold;
+        try
         {
-            case 1:
-
-            break;
-            case 2:
+            switch (stoi(choiceHold))
+            {
+                hold = nullptr;
+                case 1:
+                cacheList.displayCache();
+                break;
+                case 2:
                 cout << "City name?: ";
                 getline(cin, cityName);
                 cout << "City countryCode?: ";
                 getline(cin, countryCode);
-                CSVReader::findCity(cityName, countryCode, cacheList);
-            break;
-            case 3:
-
-            break;
-            case 4:
+                hold = cacheList.findCity(cityName, countryCode);
+                if (hold != nullptr)
+                {
+                    cout << "City found in the cache: " << hold->name << " " << hold->countryCode << " " << hold->population << endl;
+                    break;
+                }
+                else
+                {
+                    cout << "City not found in cache, looking in csv file." << endl;
+                    CSVReader::findCity(cityName, countryCode, cacheList);
+                }
+                break;
+                case 3:
                 return 0;
-            default:
+                default:
                 cout << "Invalid choice." << endl;
+            }
+            cout << endl;
         }
-        cout << endl;
+        catch(...)
+        {
+            cout << "Error with your input try again." << endl << endl;
+        }
     }
 }
