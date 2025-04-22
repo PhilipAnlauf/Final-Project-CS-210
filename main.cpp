@@ -45,6 +45,10 @@ class CityCacheList
 
         City* findCity(string& cityNameIN, string& countryCodeIN)
         {
+            /*
+             *For loop will always loop through 10 indexes even if the index is nullptr and the loop is not dependent on
+             *the array size, therefore being O(1) and not O(N)
+             */
             for (int i = 0; i < 10; i++)
             {
                 if (cities.at(i) != nullptr)
