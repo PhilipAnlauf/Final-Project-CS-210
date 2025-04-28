@@ -2,6 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
+#include <cstdlib>
 
 using namespace std;
 
@@ -14,22 +15,21 @@ struct City
            countryCode(countryCodeIN), population(populationIN) {}
 };
 
-int getHashIndex(string& cityNameIN, int& cityPopIN, int arraySize)
-{
-    int asciiIntSum = 0;
-    for(const char character : cityNameIN)
-    {
-        asciiIntSum += stoi(to_string(static_cast<int>(character)));
-    }
-    return (asciiIntSum+cityPopIN) % arraySize;
-}
-
 class CityCacheList
+{
+    public:
+        virtual ~CityCacheList() = default;
+        virtual void insertCity2Cache(City* cityIN) = 0;
+        virtual City* findCity(string& cityNameIN, string& countryCodeIN) = 0;
+        virtual void displayCache() = 0;
+};
+
+class FIFOCache : public CityCacheList
 {
     private:
         vector<City*> cities;
     public:
-        CityCacheList()
+        FIFOCache()
         {
             for (int i = 0; i < 10; i++)
             {
@@ -78,6 +78,70 @@ class CityCacheList
         }
 };
 
+class RandomCacheMethod : public CityCacheList
+{
+private:
+    int size = 0;
+    vector<City*> cities;
+public:
+    RandomCacheMethod()
+    {
+        for (int i = 0; i < 10; i++)
+        {
+            cities.push_back(nullptr);
+        }
+    }
+
+    void insertCity2Cache(City* cityIN)
+    {
+        if (size >= 10)
+        {
+            cities.at(rand() % 10) = cityIN;
+            return;
+        }
+        else
+        {
+            cities.erase(cities.begin());
+            cities.push_back(cityIN);
+            size++;
+        }
+    }
+
+    City* findCity(string& cityNameIN, string& countryCodeIN)
+    {
+        /*
+         *For loop will always loop through 10 indexes even if the index is nullptr and the loop is not dependent on
+         *the array size, therefore being O(1) and not O(N)
+         */
+        for (int i = 0; i < 10; i++)
+        {
+            if (cities.at(i) != nullptr)
+            {
+                if (cities.at(i)->countryCode == countryCodeIN && cities.at(i)->name == cityNameIN)
+                {
+                    return cities.at(i);
+                }
+            }
+        }
+        return nullptr;
+    }
+
+    void displayCache()
+    {
+        for (int i = 0; i < 10; i++)
+        {
+            if (cities.at(i) != nullptr)
+            {
+                cout << cities.at(i)->name << " " << endl;
+            }
+            else
+            {
+                cout << " nullptr" << endl;
+            }
+        }
+    }
+};
+
 class CSVReader
 {
     public:
@@ -114,9 +178,25 @@ class CSVReader
        }
 };
 
+void preloadCities(CityCacheList* cacheList)
+{
+    cacheList->insertCity2Cache(new City("andorra la vella", "ad", 20430));
+    cacheList->insertCity2Cache(new City("canillo", "ad", 3292));
+    cacheList->insertCity2Cache(new City("encamp", "ad", 11224));
+    cacheList->insertCity2Cache(new City("la massana", "ad", 7211));
+    cacheList->insertCity2Cache(new City("les escaldes", "ad", 15854));
+    cacheList->insertCity2Cache(new City("ordino", "ad", 2553));
+    cacheList->insertCity2Cache(new City("sant julia de loria", "ad", 8020));
+    cacheList->insertCity2Cache(new City("abu dhabi", "ae", 603687));
+    cacheList->insertCity2Cache(new City("dubai", "ae", 1137376));
+    cacheList->insertCity2Cache(new City("sharjah", "ae", 543942));
+}
+
 int main()
 {
-    CityCacheList cacheList;
+    CityCacheList* cacheList = new RandomCacheMethod();
+
+    preloadCities(cacheList);
 
     string cityName, countryCode;
     while (true)
@@ -134,14 +214,14 @@ int main()
             {
                 hold = nullptr;
                 case 1:
-                cacheList.displayCache();
+                cacheList->displayCache();
                 break;
                 case 2:
                 cout << "City name?: ";
                 getline(cin, cityName);
                 cout << "City countryCode?: ";
                 getline(cin, countryCode);
-                hold = cacheList.findCity(cityName, countryCode);
+                hold = cacheList->findCity(cityName, countryCode);
                 if (hold != nullptr)
                 {
                     cout << "City found in the cache: " << hold->name << " " << hold->countryCode << " " << hold->population << endl;
@@ -150,7 +230,7 @@ int main()
                 else
                 {
                     cout << "City not found in cache, looking in csv file." << endl;
-                    CSVReader::findCity(cityName, countryCode, cacheList);
+                    CSVReader::findCity(cityName, countryCode, *cacheList);
                 }
                 break;
                 case 3:
