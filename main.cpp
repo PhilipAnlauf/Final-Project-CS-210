@@ -1,8 +1,8 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <utility>
 #include <vector>
-#include <cstdlib>
 
 using namespace std;
 
@@ -10,9 +10,10 @@ struct City
 {
     string name, countryCode;
     int population;
+    int uses = 0;
 
-    City(string nameIN, string countryCodeIN, int populationIN): name(std::move(nameIN)),
-           countryCode(countryCodeIN), population(populationIN) {}
+    City(string nameIN, string countryCodeIN, const int populationIN): name(std::move(nameIN)),
+           countryCode(move(countryCodeIN)), population(populationIN) {}
 };
 
 class CityCacheList
@@ -37,13 +38,13 @@ class FIFOCache : public CityCacheList
             }
         }
 
-        void insertCity2Cache(City* cityIN)
+        void insertCity2Cache(City* cityIN) override
         {
             cities.erase(cities.begin());
             cities.push_back(cityIN);
         }
 
-        City* findCity(string& cityNameIN, string& countryCodeIN)
+        City* findCity(string& cityNameIN, string& countryCodeIN) override
         {
             /*
              *For loop will always loop through 10 indexes even if the index is nullptr and the loop is not dependent on
@@ -62,7 +63,7 @@ class FIFOCache : public CityCacheList
             return nullptr;
         }
 
-        void displayCache()
+        void displayCache() override
         {
             for (int i = 0; i < 10; i++)
             {
@@ -92,7 +93,7 @@ public:
         }
     }
 
-    void insertCity2Cache(City* cityIN)
+    void insertCity2Cache(City* cityIN) override
     {
         if (size >= 10)
         {
@@ -107,7 +108,7 @@ public:
         }
     }
 
-    City* findCity(string& cityNameIN, string& countryCodeIN)
+    City* findCity(string& cityNameIN, string& countryCodeIN) override
     {
         /*
          *For loop will always loop through 10 indexes even if the index is nullptr and the loop is not dependent on
@@ -126,7 +127,7 @@ public:
         return nullptr;
     }
 
-    void displayCache()
+    void displayCache() override
     {
         for (int i = 0; i < 10; i++)
         {
@@ -140,6 +141,78 @@ public:
             }
         }
     }
+};
+
+class LeastUsedCache : public CityCacheList
+{
+    private:
+        int size = 0;
+        vector<City*> cities;
+    public:
+        LeastUsedCache()
+        {
+            for (int i = 0; i < 10; i++)
+            {
+                cities.push_back(nullptr);
+            }
+        }
+
+        void insertCity2Cache(City* cityIN) override
+        {
+            if (size >= 10)
+            {
+                int smallestIndex = 0;
+                for (int i = 0; i < 10; i++)
+                {
+                    if (cities.at(i)->uses < cities.at(smallestIndex)->uses)
+                    {
+                        smallestIndex = i;
+                    }
+                }
+                cities.at(smallestIndex) = cityIN;
+            }
+            else
+            {
+                cities.erase(cities.begin());
+                cities.push_back(cityIN);
+                size++;
+            }
+        }
+
+        City* findCity(string& cityNameIN, string& countryCodeIN) override
+        {
+            /*
+             *For loop will always loop through 10 indexes even if the index is nullptr and the loop is not dependent on
+             *the array size, therefore being O(1) and not O(N)
+             */
+            for (int i = 0; i < 10; i++)
+            {
+                if (cities.at(i) != nullptr)
+                {
+                    if (cities.at(i)->countryCode == countryCodeIN && cities.at(i)->name == cityNameIN)
+                    {
+                        cities.at(i)->uses++;
+                        return cities.at(i);
+                    }
+                }
+            }
+            return nullptr;
+        }
+
+        void displayCache() override
+        {
+            for (int i = 0; i < 10; i++)
+            {
+                if (cities.at(i) != nullptr)
+                {
+                    cout << cities.at(i)->name << " " << endl;
+                }
+                else
+                {
+                    cout << " nullptr" << endl;
+                }
+            }
+        }
 };
 
 class CSVReader
@@ -194,7 +267,7 @@ void preloadCities(CityCacheList* cacheList)
 
 int main()
 {
-    CityCacheList* cacheList = new RandomCacheMethod();
+    CityCacheList* cacheList = new LeastUsedCache();
 
     preloadCities(cacheList);
 
@@ -207,12 +280,11 @@ int main()
 
         string choiceHold;
         getline(cin, choiceHold);
-        City* hold;
         try
         {
+            City* hold;
             switch (stoi(choiceHold))
             {
-                hold = nullptr;
                 case 1:
                 cacheList->displayCache();
                 break;
