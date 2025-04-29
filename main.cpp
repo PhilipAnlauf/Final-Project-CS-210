@@ -267,7 +267,46 @@ void preloadCities(CityCacheList* cacheList)
 
 int main()
 {
-    CityCacheList* cacheList = new LeastUsedCache();
+    CityCacheList* cacheList;
+
+
+    bool isDone = false;
+    while (!isDone)
+    {
+        cout << "Choose a cache method:" << endl;
+        cout << "1. First in first out method." << endl;
+        cout << "2. Least used method." << endl;
+        cout << "3. Random method." << endl;
+
+        string choiceHold;
+        getline(cin, choiceHold);
+        try
+        {
+            switch (stoi(choiceHold))
+            {
+                case 1:
+                    cacheList = new FIFOCache();
+                    isDone = true;
+                break;
+                case 2:
+                    cacheList = new LeastUsedCache();
+                    isDone = true;
+                break;
+                case 3:
+                    cacheList = new RandomCacheMethod();
+                    isDone = true;
+                default:
+                    cout << "Invalid choice." << endl;
+            }
+            cout << endl;
+        }
+        catch(...)
+        {
+            cout << "Error with your input try again." << endl << endl;
+        }
+    }
+
+
 
     preloadCities(cacheList);
 
