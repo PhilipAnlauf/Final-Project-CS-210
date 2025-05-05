@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -14,6 +15,12 @@ struct City
 
     City(string nameIN, string countryCodeIN, const int populationIN): name(std::move(nameIN)),
            countryCode(move(countryCodeIN)), population(populationIN) {}
+};
+
+struct TrieNode
+{
+    unordered_map<char, TrieNode*> children;
+    City* city = nullptr;
 };
 
 class CityCacheList
@@ -212,6 +219,58 @@ class LeastUsedCache : public CityCacheList
                     cout << " nullptr" << endl;
                 }
             }
+        }
+};
+
+class TrieTree
+{
+    private:
+        TrieNode* root;
+    public:
+        TrieTree()
+        {
+            root = new TrieNode();
+        }
+
+        void insert(City* cityIN)
+        {
+            TrieNode* node = root;
+            string key = "" + cityIN->countryCode + cityIN->name;
+            for (char ch : key)
+            {
+                if (!node->children.count(ch))
+                {
+                    node->children[ch] = new TrieNode();
+                    node = node->children[ch];
+                }
+            }
+            node->city = cityIN;
+        }
+
+        void lookup(string cityNameIN, string countryCodeIN)
+        {
+            TrieNode* node = root;
+            string key = "" + countryCodeIN + cityNameIN;
+
+            for (char ch : key)
+            {
+                if (!node->children.count(ch))
+                {
+                    node->children[ch] = new TrieNode();
+                    node = node->children[ch];
+                }
+            }
+            City* foundCity = node->city;
+            if (foundCity != nullptr)
+            {
+                cout << "City found in the Trie: " << foundCity->name << " " << foundCity->countryCode << " "
+                << foundCity->population << endl;
+            }
+            else
+            {
+                cout << "City not found in the Trie." << endl;
+            }
+
         }
 };
 
