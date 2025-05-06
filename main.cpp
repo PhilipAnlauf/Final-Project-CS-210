@@ -232,10 +232,11 @@ class TrieTree
             root = new TrieNode();
         }
 
-        void insert(City* cityIN)
+        void insert(City* cityIN) const
         {
             TrieNode* node = root;
             string key = "" + cityIN->countryCode + cityIN->name;
+
             for (char ch : key)
             {
                 if (!node->children.count(ch))
@@ -247,10 +248,10 @@ class TrieTree
             node->city = cityIN;
         }
 
-        void lookup(string cityNameIN, string countryCodeIN)
+        void lookup(const string& cityNameIN, const string& countryCodeIN) const
         {
             TrieNode* node = root;
-            string key = "" + countryCodeIN + cityNameIN;
+            const string key = "" + countryCodeIN + cityNameIN;
 
             for (char ch : key)
             {
@@ -308,8 +309,35 @@ class CSVReader
             cout << "City was not found in csv file." << endl;
             file.close();
        }
+
+        static void createTrie(TrieTree& trieIN)
+        {
+            ifstream file("world_cities.csv");
+            string line, word;
+
+            if (!file.is_open())
+            {
+                cerr << "Error: Could not open file" << endl;
+                return;
+            }
+
+            while (getline(file, line))
+            {
+                stringstream ss(line);
+                vector<string> lineData;
+                while (getline(ss, word, ','))
+                {
+                    lineData.push_back(word);
+                }
+
+                trieIN.insert(new City(lineData.at(1), lineData.at(0), stoi(lineData.at(2))));
+            }
+            file.close();
+        }
 };
 
+
+//This is for testing so I don't have to input 10 cities every time I want to test
 void preloadCities(CityCacheList* cacheList)
 {
     cacheList->insertCity2Cache(new City("andorra la vella", "ad", 20430));
@@ -327,7 +355,8 @@ void preloadCities(CityCacheList* cacheList)
 int main()
 {
     CityCacheList* cacheList;
-
+    TrieTree* trieTree = new TrieTree();
+    CSVReader::createTrie(*trieTree);
 
     bool isDone = false;
     while (!isDone)
@@ -354,6 +383,7 @@ int main()
                 case 3:
                     cacheList = new RandomCacheMethod();
                     isDone = true;
+                    break;
                 default:
                     cout << "Invalid choice." << endl;
             }
@@ -364,8 +394,6 @@ int main()
             cout << "Error with your input try again." << endl << endl;
         }
     }
-
-
 
     preloadCities(cacheList);
 
@@ -400,10 +428,11 @@ int main()
                 else
                 {
                     cout << "City not found in cache, looking in csv file." << endl;
-                    CSVReader::findCity(cityName, countryCode, *cacheList);
+                    trieTree->lookup(cityName, countryCode);
                 }
                 break;
                 case 3:
+                    return 0;
                 return 0;
                 default:
                 cout << "Invalid choice." << endl;
