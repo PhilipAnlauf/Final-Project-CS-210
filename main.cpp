@@ -4,6 +4,9 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <algorithm>
+#include <random>
+#include <chrono>
 
 using namespace std;
 
@@ -235,44 +238,47 @@ class TrieTree
         void insert(City* cityIN) const
         {
             TrieNode* node = root;
-            string key = "" + cityIN->countryCode + cityIN->name;
+            string key = cityIN->countryCode + cityIN->name;
 
             for (char ch : key)
             {
                 if (!node->children.count(ch))
                 {
                     node->children[ch] = new TrieNode();
-                    node = node->children[ch];
                 }
+                node = node->children[ch];
             }
             node->city = cityIN;
         }
 
+
         void lookup(const string& cityNameIN, const string& countryCodeIN) const
         {
             TrieNode* node = root;
-            const string key = "" + countryCodeIN + cityNameIN;
+            const string key = countryCodeIN + cityNameIN;
 
             for (char ch : key)
             {
                 if (!node->children.count(ch))
                 {
-                    node->children[ch] = new TrieNode();
-                    node = node->children[ch];
+                    cout << "City not found in the Trie." << endl;
+                    return;
                 }
+                node = node->children[ch];
             }
+
             City* foundCity = node->city;
             if (foundCity != nullptr)
             {
-                cout << "City found in the Trie: " << foundCity->name << " " << foundCity->countryCode << " "
-                << foundCity->population << endl;
+                //cout << "City found in the Trie: " << foundCity->name << " " << foundCity->countryCode << " "
+                //     << foundCity->population << endl;
             }
             else
             {
-                cout << "City not found in the Trie." << endl;
+                //cout << "City not found in the Trie." << endl;
             }
-
         }
+
 };
 
 class CSVReader
@@ -354,94 +360,228 @@ void preloadCities(CityCacheList* cacheList)
 
 int main()
 {
+    vector<string> botChosenCitiesFirstHalf;
+    ifstream file("world_cities.csv");
+
     CityCacheList* cacheList;
     TrieTree* trieTree = new TrieTree();
     CSVReader::createTrie(*trieTree);
 
-    bool isDone = false;
-    while (!isDone)
+
+    //==================================
+    //Bot choosing cities
+    //==================================
+    system("./bot");
+    vector<string> botChosenCities;
+    ifstream botChoices("botCities.txt");
+
+    string line;
+    while (getline(botChoices, line))
     {
-        cout << "Choose a cache method:" << endl;
-        cout << "1. First in first out method." << endl;
-        cout << "2. Least used method." << endl;
-        cout << "3. Random method." << endl;
-
-        string choiceHold;
-        getline(cin, choiceHold);
-        try
-        {
-            switch (stoi(choiceHold))
-            {
-                case 1:
-                    cacheList = new FIFOCache();
-                    isDone = true;
-                break;
-                case 2:
-                    cacheList = new LeastUsedCache();
-                    isDone = true;
-                break;
-                case 3:
-                    cacheList = new RandomCacheMethod();
-                    isDone = true;
-                    break;
-                default:
-                    cout << "Invalid choice." << endl;
-            }
-            cout << endl;
-        }
-        catch(...)
-        {
-            cout << "Error with your input try again." << endl << endl;
-        }
+        botChosenCities.push_back(line);
     }
+    //=================================================================
+    //Going over first strategy
+    auto time = 0.0;
+    FIFOCache* cacheList1 = new FIFOCache();
 
-    preloadCities(cacheList);
-
-    string cityName, countryCode;
-    while (true)
+    for (int i = 0 ; i < 1000 ; i ++)
     {
-        cout << "1. Display cache." << endl;
-        cout << "2. Search for city." << endl;
-        cout << "3. exit." << endl;
+        auto start = chrono::high_resolution_clock::now();
+        City* tempCity;
 
-        string choiceHold;
-        getline(cin, choiceHold);
-        try
-        {
-            City* hold;
-            switch (stoi(choiceHold))
-            {
-                case 1:
-                cacheList->displayCache();
-                break;
-                case 2:
-                cout << "City name?: ";
-                getline(cin, cityName);
-                cout << "City countryCode?: ";
-                getline(cin, countryCode);
-                hold = cacheList->findCity(cityName, countryCode);
-                if (hold != nullptr)
-                {
-                    cout << "City found in the cache: " << hold->name << " " << hold->countryCode << " " << hold->population << endl;
-                    break;
-                }
-                else
-                {
-                    cout << "City not found in cache, looking in csv file." << endl;
-                    trieTree->lookup(cityName, countryCode);
-                }
-                break;
-                case 3:
-                    return 0;
-                return 0;
-                default:
-                cout << "Invalid choice." << endl;
-            }
-            cout << endl;
+        //Getting data from first two
+        stringstream ss(botChosenCities[i]);
+        string part;
+        vector<string> firstTwo;
+
+        int count = 0;
+        while (getline(ss, part, ',') && count < 2) {
+            firstTwo.push_back(part);
+            count++;
         }
-        catch(...)
+
+        tempCity = cacheList1->findCity(firstTwo[1], firstTwo[0]);
+        if (tempCity != nullptr)
         {
-            cout << "Error with your input try again." << endl << endl;
+            //cout << "City found in the cache: " << hold->name << " " << hold->countryCode << " " << hold->population << endl;
+            break;
         }
+        else
+        {
+            //cout << "City not found in cache, looking in csv file." << endl;
+            //cout << "Searching for " << firstTwo[1] << " and " << firstTwo[0] << endl;
+            trieTree->lookup(firstTwo[1], firstTwo[0]);
+        }
+        auto end = chrono::high_resolution_clock::now();
+        auto duration = chrono::duration_cast<chrono::microseconds>(end - start);
+        time += duration.count();
     }
+    cout << "Time taken for First in first out method: " << time << " microseconds "<< endl;
+    //=================================================================
+    //Going over second strategy
+    auto time2 = 0.0;
+    LeastUsedCache* cacheList2 = new LeastUsedCache();
+
+    for (int i = 0 ; i < 1000 ; i ++)
+    {
+        auto start = chrono::high_resolution_clock::now();
+        City* tempCity;
+
+        //Getting data from first two
+        stringstream ss(botChosenCities[i]);
+        string part;
+        vector<string> firstTwo;
+
+        int count = 0;
+        while (getline(ss, part, ',') && count < 2) {
+            firstTwo.push_back(part);
+            count++;
+        }
+
+        tempCity = cacheList2->findCity(firstTwo[1], firstTwo[0]);
+        if (tempCity != nullptr)
+        {
+            //cout << "City found in the cache: " << hold->name << " " << hold->countryCode << " " << hold->population << endl;
+            break;
+        }
+        else
+        {
+            //cout << "City not found in cache, looking in csv file." << endl;
+            //cout << "Searching for " << firstTwo[1] << " and " << firstTwo[0] << endl;
+            trieTree->lookup(firstTwo[1], firstTwo[0]);
+        }
+        auto end = chrono::high_resolution_clock::now();
+        auto duration = chrono::duration_cast<chrono::microseconds>(end - start);
+        time2 += duration.count();
+    }
+    cout << "Time taken for least used method: " << time2 << " microseconds "<< endl;
+    //=================================================================
+    //Going over third strategy
+    auto time3 = 0.0;
+    RandomCacheMethod* cacheList3 = new RandomCacheMethod();
+
+    for (int i = 0 ; i < 1000 ; i ++)
+    {
+        auto start = chrono::high_resolution_clock::now();
+        City* tempCity;
+
+        //Getting data from first two
+        stringstream ss(botChosenCities[i]);
+        string part;
+        vector<string> firstTwo;
+
+        int count = 0;
+        while (getline(ss, part, ',') && count < 2) {
+            firstTwo.push_back(part);
+            count++;
+        }
+
+        tempCity = cacheList3->findCity(firstTwo[1], firstTwo[0]);
+        if (tempCity != nullptr)
+        {
+            //cout << "City found in the cache: " << hold->name << " " << hold->countryCode << " " << hold->population << endl;
+            break;
+        }
+        else
+        {
+            //cout << "City not found in cache, looking in csv file." << endl;
+            //cout << "Searching for " << firstTwo[1] << " and " << firstTwo[0] << endl;
+            trieTree->lookup(firstTwo[1], firstTwo[0]);
+        }
+        auto end = chrono::high_resolution_clock::now();
+        auto duration = chrono::duration_cast<chrono::microseconds>(end - start);
+        time3 += duration.count();
+    }
+    cout << "Time taken for random choice method: " << time3 << " microseconds "<< endl;
+
+
+    //================================================================
+
+    // bool isDone = false;
+    // while (!isDone)
+    // {
+    //     cout << "Choose a cache method:" << endl;
+    //     cout << "1. First in first out method." << endl;
+    //     cout << "2. Least used method." << endl;
+    //     cout << "3. Random method." << endl;
+    //
+    //     string choiceHold;
+    //     getline(cin, choiceHold);
+    //     try
+    //     {
+    //         switch (stoi(choiceHold))
+    //         {
+    //             case 1:
+    //                 cacheList = new FIFOCache();
+    //                 isDone = true;
+    //             break;
+    //             case 2:
+    //                 cacheList = new LeastUsedCache();
+    //                 isDone = true;
+    //             break;
+    //             case 3:
+    //                 cacheList = new RandomCacheMethod();
+    //                 isDone = true;
+    //                 break;
+    //             default:
+    //                 cout << "Invalid choice." << endl;
+    //         }
+    //         cout << endl;
+    //     }
+    //     catch(...)
+    //     {
+    //         cout << "Error with your input try again." << endl << endl;
+    //     }
+    // }
+    //
+    // preloadCities(cacheList);
+    //
+    // string cityName, countryCode;
+    // while (true)
+    // {
+    //     cout << "1. Display cache." << endl;
+    //     cout << "2. Search for city." << endl;
+    //     cout << "3. exit." << endl;
+    //
+    //     string choiceHold;
+    //     getline(cin, choiceHold);
+    //     try
+    //     {
+    //         City* hold;
+    //         switch (stoi(choiceHold))
+    //         {
+    //             case 1:
+    //             cacheList->displayCache();
+    //             break;
+    //             case 2:
+    //             cout << "City name?: ";
+    //             getline(cin, cityName);
+    //             cout << "City countryCode?: ";
+    //             getline(cin, countryCode);
+    //             hold = cacheList->findCity(cityName, countryCode);
+    //             if (hold != nullptr)
+    //             {
+    //                 cout << "City found in the cache: " << hold->name << " " << hold->countryCode << " " << hold->population << endl;
+    //                 break;
+    //             }
+    //             else
+    //             {
+    //                 cout << "City not found in cache, looking in csv file." << endl;
+    //                 trieTree->lookup(cityName, countryCode);
+    //             }
+    //             break;
+    //             case 3:
+    //                 return 0;
+    //             return 0;
+    //             default:
+    //             cout << "Invalid choice." << endl;
+    //         }
+    //         cout << endl;
+    //     }
+    //     catch(...)
+    //     {
+    //         cout << "Error with your input try again." << endl << endl;
+    //     }
+    // }
 }
